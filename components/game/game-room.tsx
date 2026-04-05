@@ -3,9 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useGame, type RoomParticipant, type RoomFurniture } from '@/lib/game-context'
 import { useKeyboardMovement } from '@/hooks/use-keyboard-movement'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { PixelAvatar } from './pixel-avatar'
 import { GameChat } from './game-chat'
 import { VoiceChat } from './voice-chat'
+import { VirtualJoystick } from './virtual-joystick'
 
 interface GameRoomProps {
   onLeave: () => void
@@ -36,105 +38,95 @@ const furnitureSprites: Record<string, { width: number; height: number; render: 
   bed: { width: 80, height: 60, render: () => (<svg width="80" height="60" viewBox="0 0 80 60" style={{ imageRendering: 'pixelated' }}><rect x="0" y="20" width="80" height="40" fill="#5D4037" /><rect x="5" y="25" width="70" height="30" fill="#ECEFF1" /><rect x="5" y="25" width="25" height="20" fill="#90CAF9" /><rect x="35" y="25" width="35" height="30" fill="#B3E5FC" /><rect x="0" y="10" width="20" height="50" fill="#4E342E" /></svg>) },
 }
 
-// Chat bubble state per player
-const chatBubbles = new Map<number | string, { message: string; timeout: ReturnType<typeof setTimeout> }>()
-
 export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
-  const { state, leaveRoom, moveCharacter, stopCharacter, sendMessage } = useGame()
+  const { state, leaveRoom, moveCharacter, stopCharacter } = useGame()
   const { currentRoom, user, chatMessages } = state
   const roomRef = useRef<HTMLDivElement>(null)
-  const [showChat, setShowChat] = useState(true)
-  const [showVoice, setShowVoice] = useState(true)
+  const isMobile = useIsMobile()
+  const [showChat, setShowChat] = useState(false) // Start hidden on mobile
+  const [showVoice, setShowVoice] = useState(!isMobile)
   const [copiedCode, setCopiedCode] = useState(false)
   const [playerBubbles, setPlayerBubbles] = useState<Record<string, string>>({})
-  const [draggingFurniture, setDraggingFurniture] = useState<string | null>(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const isOwner = currentRoom?.ownerId === user?.id
 
-  // Room bounds - bigger room (1200x600)
-  const ROOM_WIDTH = 1200
-  const ROOM_HEIGHT = 600
-  const [roomBounds] = useState({ minX: 30, minY: 10, maxX: ROOM_WIDTH - 30, maxY: ROOM_HEIGHT - 30 })
+  const ROOM_WIDTH = isMobile ? 800 : 1200
+  const ROOM_HEIGHT = isMobile ? 500 : 600
+  const roomBounds = { minX: 30, minY: 10, maxX: ROOM_WIDTH - 30, maxY: ROOM_HEIGHT - 30 }
 
-  // Track chat messages for bubbles
+  // Chat bubbles
   useEffect(() => {
     if (chatMessages.length === 0) return
     const lastMsg = chatMessages[chatMessages.length - 1]
     if (lastMsg.type === 'system') return
-
     const key = String(lastMsg.senderId)
     setPlayerBubbles(prev => ({ ...prev, [key]: lastMsg.content }))
-
     const timer = setTimeout(() => {
-      setPlayerBubbles(prev => {
-        const next = { ...prev }
-        delete next[key]
-        return next
-      })
+      setPlayerBubbles(prev => { const n = { ...prev }; delete n[key]; return n })
     }, 4000)
-
     return () => clearTimeout(timer)
   }, [chatMessages.length, chatMessages])
 
-  // WASD movement
-  const onMove = useCallback((x: number, y: number, direction: string, isWalking: boolean) => {
+  // WASD keyboard movement (desktop only)
+  const onKeyMove = useCallback((x: number, y: number, direction: string, isWalking: boolean) => {
     moveCharacter(x, y, direction, isWalking)
   }, [moveCharacter])
 
-  const onStop = useCallback(() => {
+  const onKeyStop = useCallback(() => {
     stopCharacter()
   }, [stopCharacter])
 
   const { setPosition } = useKeyboardMovement({
     speed: 4,
     bounds: roomBounds,
-    enabled: !!currentRoom && !!user && !draggingFurniture,
-    onMove,
-    onStop,
+    enabled: !!currentRoom && !!user && !isMobile,
+    onMove: onKeyMove,
+    onStop: onKeyStop,
   })
+
+  // Joystick movement (mobile)
+  const posRef = useRef({ x: 300, y: 250 })
+  const lastJoystickBroadcast = useRef(0)
+
+  const onJoystickMove = useCallback((dx: number, dy: number, direction: string) => {
+    const newX = Math.max(roomBounds.minX, Math.min(roomBounds.maxX, posRef.current.x + dx))
+    const newY = Math.max(roomBounds.minY, Math.min(roomBounds.maxY, posRef.current.y + dy))
+    posRef.current = { x: newX, y: newY }
+
+    const now = Date.now()
+    if (now - lastJoystickBroadcast.current > 33) {
+      lastJoystickBroadcast.current = now
+      moveCharacter(newX, newY, direction, true)
+    }
+  }, [moveCharacter, roomBounds])
+
+  const onJoystickStop = useCallback(() => {
+    stopCharacter()
+  }, [stopCharacter])
 
   // Sync position on room join
   useEffect(() => {
     if (currentRoom && user) {
       const me = currentRoom.participants.find(p => p.id === user.id)
-      if (me) setPosition(me.position.x, me.position.y)
+      if (me) {
+        setPosition(me.position.x, me.position.y)
+        posRef.current = { x: me.position.x, y: me.position.y }
+      }
     }
   }, [currentRoom?.id, user?.id, setPosition])
 
-  // Furniture dragging handlers
-  const handleFurnitureMouseDown = (e: React.MouseEvent, furnitureId: string) => {
-    if (!isOwner) return
-    e.stopPropagation()
-    const f = currentRoom?.furniture.find(f => f.id === furnitureId)
-    if (!f) return
-    setDraggingFurniture(furnitureId)
-    setDragOffset({
-      x: e.clientX - f.position.x,
-      y: e.clientY - f.position.y,
-    })
-  }
+  // Auto-scroll to follow player on mobile
+  useEffect(() => {
+    if (!isMobile || !roomRef.current || !currentRoom || !user) return
+    const me = currentRoom.participants.find(p => p.id === user.id)
+    if (!me) return
+    const container = roomRef.current
+    const targetScrollX = me.position.x - container.clientWidth / 2
+    const targetScrollY = me.position.y - container.clientHeight / 2
+    container.scrollLeft = targetScrollX
+    container.scrollTop = targetScrollY
+  }, [isMobile, currentRoom?.participants, user])
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingFurniture || !roomRef.current) return
-    const rect = roomRef.current.getBoundingClientRect()
-    const newX = Math.max(0, Math.min(ROOM_WIDTH - 80, e.clientX - rect.left - dragOffset.x + roomRef.current.scrollLeft))
-    const newY = Math.max(0, Math.min(ROOM_HEIGHT - 60, e.clientY - rect.top - dragOffset.y + roomRef.current.scrollTop))
-
-    // Update furniture position locally
-    const { state: { currentRoom } } = useGame.call ? { state: { currentRoom: null } } : { state }
-    if (currentRoom) {
-      // We'll use a state update via the parent
-    }
-  }, [draggingFurniture, dragOffset, state])
-
-  const handleMouseUp = useCallback(() => {
-    setDraggingFurniture(null)
-  }, [])
-
-  const handleLeave = async () => {
-    await leaveRoom()
-    onLeave()
-  }
+  const handleLeave = async () => { await leaveRoom(); onLeave() }
 
   const copyRoomCode = () => {
     if (currentRoom) {
@@ -150,42 +142,35 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
   const wall = wallStyles[currentRoom.wallStyle] || wallStyles.brick
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      {/* Header */}
-      <header className="flex-shrink-0 border-b-4 border-border bg-card px-4 py-2">
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+      {/* Header - compact on mobile */}
+      <header className="flex-shrink-0 border-b-4 border-border bg-card px-2 sm:px-4 py-1.5 sm:py-2">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button onClick={handleLeave} className="p-2 bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <button onClick={handleLeave} className="p-1.5 sm:p-2 bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors flex-shrink-0" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
             </button>
-            <div>
-              <h1 className="font-mono text-lg text-foreground">{currentRoom.name}</h1>
-              <div className="flex items-center gap-2">
-                <button onClick={copyRoomCode} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
-                  <span>Código: {currentRoom.code}</span>
-                  {copiedCode ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
-                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
-                </button>
-                <span className="text-xs text-muted-foreground/50">|</span>
-                <span className="text-xs text-accent">W A S D para mover</span>
-                {isOwner && <><span className="text-xs text-muted-foreground/50">|</span><span className="text-xs text-secondary">Arraste os móveis</span></>}
-              </div>
+            <div className="min-w-0">
+              <h1 className="font-mono text-sm sm:text-lg text-foreground truncate">{currentRoom.name}</h1>
+              <button onClick={copyRoomCode} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
+                <span>{currentRoom.code}</span>
+                {copiedCode && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>}
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center gap-1 px-3 py-1 bg-muted">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-primary"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
-              <span className="text-sm">{currentRoom.participants.length}/{currentRoom.maxParticipants}</span>
+          <div className="flex items-center gap-1 sm:gap-2">
+            <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-muted text-xs">
+              <span>{currentRoom.participants.length}/{currentRoom.maxParticipants}</span>
             </div>
-            <button onClick={() => setShowChat(!showChat)} className={`p-2 transition-colors ${showChat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <button onClick={() => setShowChat(!showChat)} className={`p-1.5 sm:p-2 transition-colors ${showChat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
             </button>
-            <button onClick={() => setShowVoice(!showVoice)} className={`p-2 transition-colors ${showVoice ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>
+            <button onClick={() => setShowVoice(!showVoice)} className={`p-1.5 sm:p-2 transition-colors ${showVoice ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /></svg>
             </button>
             {isOwner && (
-              <button onClick={onEditRoom} className="p-2 bg-accent text-accent-foreground" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+              <button onClick={onEditRoom} className="p-1.5 sm:p-2 bg-accent text-accent-foreground" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
               </button>
             )}
           </div>
@@ -193,21 +178,20 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
       </header>
 
       {/* Main Area */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Game Canvas */}
         <div className="flex-1 relative overflow-hidden">
           {/* Wall */}
-          <div className="absolute top-0 left-0 right-0 h-24 z-0" style={{ background: wall.pattern, backgroundColor: wall.color }}>
-            <div className="absolute bottom-0 left-0 right-0 h-4 bg-black/20" />
+          <div className="absolute top-0 left-0 right-0 h-16 sm:h-24 z-0" style={{ background: wall.pattern, backgroundColor: wall.color }}>
+            <div className="absolute bottom-0 left-0 right-0 h-3 sm:h-4 bg-black/20" />
           </div>
 
           {/* Scrollable Game Area */}
           <div
             ref={roomRef}
-            className="absolute top-24 left-0 right-0 bottom-0 overflow-auto"
+            className="absolute top-16 sm:top-24 left-0 right-0 bottom-0 overflow-auto"
             style={{ background: floor.pattern, backgroundColor: floor.color }}
-            onMouseUp={handleMouseUp}
           >
-            {/* Inner room container (bigger than viewport) */}
             <div className="relative" style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT, minWidth: ROOM_WIDTH, minHeight: ROOM_HEIGHT }}>
               {/* Grid */}
               <div className="absolute inset-0 opacity-10 pointer-events-none" style={{
@@ -215,42 +199,73 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
                 backgroundSize: '50px 50px',
               }} />
 
-              {/* Furniture (draggable for owner) */}
-              {currentRoom.furniture.map((furniture) => (
-                <FurnitureItem
-                  key={furniture.id}
-                  furniture={furniture}
-                  isDraggable={isOwner}
-                  onMouseDown={(e) => handleFurnitureMouseDown(e, furniture.id)}
-                />
+              {/* Furniture */}
+              {currentRoom.furniture.map((f) => (
+                <FurnitureItem key={f.id} furniture={f} />
               ))}
 
               {/* Players */}
-              {currentRoom.participants.map((participant) => (
+              {currentRoom.participants.map((p) => (
                 <PlayerCharacter
-                  key={participant.id}
-                  participant={participant}
-                  isCurrentUser={participant.id === user?.id}
-                  currentUserPosition={currentRoom.participants.find(p => p.id === user?.id)?.position}
-                  chatBubble={playerBubbles[String(participant.id)] || null}
+                  key={p.id}
+                  participant={p}
+                  isCurrentUser={p.id === user?.id}
+                  currentUserPosition={currentRoom.participants.find(pp => pp.id === user?.id)?.position}
+                  chatBubble={playerBubbles[String(p.id)] || null}
+                  isMobile={isMobile}
                 />
               ))}
             </div>
           </div>
 
-          {/* Voice Chat Overlay */}
+          {/* Voice Chat Overlay - top left */}
           {showVoice && (
-            <div className="absolute top-28 left-4 z-10">
+            <div className="absolute top-20 sm:top-28 left-2 sm:left-4 z-20">
               <VoiceChat />
+            </div>
+          )}
+
+          {/* Mobile Joystick - bottom left */}
+          {isMobile && (
+            <div className="absolute bottom-4 left-4 z-30">
+              <VirtualJoystick onMove={onJoystickMove} onStop={onJoystickStop} size={100} />
+            </div>
+          )}
+
+          {/* Mobile quick action buttons - bottom right */}
+          {isMobile && (
+            <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-2">
+              <button
+                onClick={() => setShowChat(true)}
+                className="w-12 h-12 rounded-full bg-primary/80 text-primary-foreground flex items-center justify-center shadow-lg active:scale-95"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              </button>
             </div>
           )}
         </div>
 
-        {/* Chat Sidebar */}
+        {/* Chat - Sidebar on desktop, overlay on mobile */}
         {showChat && (
-          <div className="w-80 flex-shrink-0 border-l-4 border-border bg-card">
-            <GameChat />
-          </div>
+          isMobile ? (
+            // Mobile: full-screen overlay
+            <div className="absolute inset-0 z-40 bg-card/95 backdrop-blur-sm flex flex-col">
+              <div className="flex items-center justify-between p-3 border-b-2 border-border">
+                <h3 className="font-mono text-sm">Chat da Sala</h3>
+                <button onClick={() => setShowChat(false)} className="p-2 bg-muted text-muted-foreground">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <GameChat />
+              </div>
+            </div>
+          ) : (
+            // Desktop: sidebar
+            <div className="w-80 flex-shrink-0 border-l-4 border-border bg-card">
+              <GameChat />
+            </div>
+          )
         )}
       </div>
     </div>
@@ -262,11 +277,13 @@ function PlayerCharacter({
   isCurrentUser,
   currentUserPosition,
   chatBubble,
+  isMobile,
 }: {
   participant: RoomParticipant
   isCurrentUser: boolean
   currentUserPosition?: { x: number; y: number }
   chatBubble: string | null
+  isMobile: boolean
 }) {
   const getDistanceOpacity = () => {
     if (!currentUserPosition || isCurrentUser) return 1
@@ -280,15 +297,15 @@ function PlayerCharacter({
     <div
       className={`absolute ${isCurrentUser ? 'z-20' : 'z-10'}`}
       style={{
-        left: participant.position.x - 24,
-        top: participant.position.y - 72,
+        left: participant.position.x - (isMobile ? 16 : 24),
+        top: participant.position.y - (isMobile ? 48 : 72),
         opacity: getDistanceOpacity(),
         transition: isCurrentUser ? 'none' : 'left 80ms linear, top 80ms linear',
       }}
     >
       <PixelAvatar
         character={participant.character}
-        size="md"
+        size={isMobile ? 'sm' : 'md'}
         isWalking={participant.isWalking}
         direction={participant.direction}
         showName
@@ -305,23 +322,19 @@ function PlayerCharacter({
   )
 }
 
-function FurnitureItem({ furniture, isDraggable, onMouseDown }: {
-  furniture: RoomFurniture
-  isDraggable: boolean
-  onMouseDown: (e: React.MouseEvent) => void
-}) {
+function FurnitureItem({ furniture }: { furniture: RoomFurniture }) {
   const sprite = furnitureSprites[furniture.type]
   if (!sprite) return null
 
   return (
     <div
-      className={`absolute z-5 ${isDraggable ? 'cursor-grab hover:outline hover:outline-2 hover:outline-primary/50 active:cursor-grabbing' : 'pointer-events-none'}`}
+      className="absolute pointer-events-none"
       style={{
         left: furniture.position.x,
         top: furniture.position.y,
         transform: `rotate(${furniture.rotation}deg)`,
+        zIndex: 5,
       }}
-      onMouseDown={isDraggable ? onMouseDown : undefined}
     >
       {sprite.render()}
     </div>
