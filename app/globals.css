@@ -211,6 +211,20 @@
   animation: walk-legs 0.4s ease-in-out infinite;
 }
 
+/* Mobile touch */
+.touch-none {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevent mobile rubber-banding in game */
+.game-canvas {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: auto;
+}
+
 /* Scrollbar customizada */
 ::-webkit-scrollbar {
   width: 12px;
