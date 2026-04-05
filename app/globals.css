@@ -1,0 +1,220 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+  font-family: 'PixelFont';
+  src: local('Press Start 2P'), local('VT323');
+  font-display: swap;
+}
+
+:root {
+  /* Paleta Pixel Art - Cores quentes e aconchegantes */
+  --background: oklch(0.15 0.02 260);
+  --foreground: oklch(0.95 0.01 90);
+  --card: oklch(0.22 0.03 260);
+  --card-foreground: oklch(0.95 0.01 90);
+  --popover: oklch(0.18 0.025 260);
+  --popover-foreground: oklch(0.95 0.01 90);
+  --primary: oklch(0.7 0.18 145);
+  --primary-foreground: oklch(0.15 0.02 260);
+  --secondary: oklch(0.65 0.2 30);
+  --secondary-foreground: oklch(0.98 0.01 90);
+  --muted: oklch(0.28 0.02 260);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.75 0.15 60);
+  --accent-foreground: oklch(0.15 0.02 260);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 90);
+  --border: oklch(0.35 0.04 260);
+  --input: oklch(0.25 0.03 260);
+  --ring: oklch(0.7 0.18 145);
+  --chart-1: oklch(0.7 0.18 145);
+  --chart-2: oklch(0.65 0.2 30);
+  --chart-3: oklch(0.75 0.15 60);
+  --chart-4: oklch(0.6 0.15 200);
+  --chart-5: oklch(0.7 0.2 320);
+  --radius: 0.5rem;
+  
+  /* Cores específicas do jogo */
+  --game-green: oklch(0.7 0.18 145);
+  --game-orange: oklch(0.65 0.2 30);
+  --game-yellow: oklch(0.85 0.15 90);
+  --game-blue: oklch(0.6 0.15 240);
+  --game-pink: oklch(0.7 0.15 350);
+  --game-dark: oklch(0.12 0.02 260);
+  --game-panel: oklch(0.2 0.025 260);
+}
+
+@theme inline {
+  --font-sans: 'VT323', 'Courier New', monospace;
+  --font-mono: 'Press Start 2P', 'VT323', monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    image-rendering: pixelated;
+  }
+}
+
+/* Estilos Pixel Art */
+.pixel-border {
+  border: 4px solid;
+  border-image: linear-gradient(45deg, var(--primary), var(--secondary)) 1;
+  image-rendering: pixelated;
+}
+
+.pixel-button {
+  position: relative;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 12px 24px;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  letter-spacing: 1px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  box-shadow: 
+    4px 4px 0 0 oklch(0.5 0.12 145),
+    inset -2px -2px 0 0 oklch(0.5 0.12 145),
+    inset 2px 2px 0 0 oklch(0.8 0.15 145);
+}
+
+.pixel-button:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 
+    2px 2px 0 0 oklch(0.5 0.12 145),
+    inset -2px -2px 0 0 oklch(0.5 0.12 145),
+    inset 2px 2px 0 0 oklch(0.8 0.15 145);
+}
+
+.pixel-button:active {
+  transform: translate(4px, 4px);
+  box-shadow: 
+    0 0 0 0 oklch(0.5 0.12 145),
+    inset -2px -2px 0 0 oklch(0.5 0.12 145),
+    inset 2px 2px 0 0 oklch(0.8 0.15 145);
+}
+
+.pixel-panel {
+  background: var(--card);
+  border: 4px solid var(--border);
+  box-shadow: 
+    8px 8px 0 0 oklch(0.1 0.02 260),
+    inset -4px -4px 0 0 oklch(0.15 0.02 260),
+    inset 4px 4px 0 0 oklch(0.3 0.03 260);
+}
+
+.pixel-input {
+  background: var(--input);
+  border: 3px solid var(--border);
+  padding: 12px 16px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--foreground);
+  box-shadow: 
+    inset 2px 2px 0 0 oklch(0.15 0.02 260),
+    inset -2px -2px 0 0 oklch(0.35 0.03 260);
+}
+
+.pixel-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 
+    0 0 0 2px var(--primary),
+    inset 2px 2px 0 0 oklch(0.15 0.02 260),
+    inset -2px -2px 0 0 oklch(0.35 0.03 260);
+}
+
+.game-title {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  text-shadow: 
+    4px 4px 0 var(--secondary),
+    -1px -1px 0 oklch(0.1 0.02 260),
+    1px -1px 0 oklch(0.1 0.02 260),
+    -1px 1px 0 oklch(0.1 0.02 260),
+    1px 1px 0 oklch(0.1 0.02 260);
+}
+
+/* Animações */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px var(--primary), 0 0 10px var(--primary); }
+  50% { box-shadow: 0 0 15px var(--primary), 0 0 25px var(--primary); }
+}
+
+@keyframes walk {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-2px) rotate(-2deg); }
+  75% { transform: translateY(-2px) rotate(2deg); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-walk {
+  animation: walk 0.3s ease-in-out infinite;
+}
+
+/* Scrollbar customizada */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-left: 2px solid var(--border);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border: 2px solid var(--border);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
