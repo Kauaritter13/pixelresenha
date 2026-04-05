@@ -1,8 +1,8 @@
 'use client'
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { apiLogin, apiRegister, apiLogout, apiGetMe, apiListRooms, apiCreateRoom, apiJoinRoom, apiLeaveRoom, apiGetMessages, apiUpdateCharacter } from './api'
-import { connectSocket, disconnectSocket, getSocket } from './socket'
+import { apiLogin, apiRegister, apiLogout, apiGetMe, apiListRooms, apiMyRooms, apiCreateRoom, apiJoinRoom, apiLeaveRoom, apiGetMessages, apiUpdateCharacter } from './api'
+import { connectSocket, disconnectSocket, getSocket, emitWhenReady } from './socket'
 import type { ApiCharacterInput } from './api'
 import type { SocketPlayer, SocketChatMessage } from './socket'
 
@@ -91,6 +91,7 @@ interface GameState {
   currentRoom: Room | null
   chatMessages: ChatMessage[]
   publicRooms: PublicRoom[]
+  myRooms: PublicRoom[]
   isLoading: boolean
   audioSettings: {
     masterVolume: number
@@ -120,6 +121,7 @@ interface GameContextType {
   addFurniture: (furniture: Omit<RoomFurniture, 'id'>) => void
   removeFurniture: (id: string) => void
   fetchPublicRooms: () => Promise<void>
+  fetchMyRooms: () => Promise<void>
   setSpeaking: (userId: number, isSpeaking: boolean) => void
   setActivity: (activity: string | null, customStatus: string | null) => void
 }
@@ -221,11 +223,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     currentRoom: null,
     chatMessages: [],
     publicRooms: [],
+    myRooms: [],
     isLoading: true,
     audioSettings: defaultAudioSettings,
   })
 
   const socketSetupRef = useRef(false)
+  const currentRoomIdRef = useRef<number | null>(null)
 
   // Setup socket event listeners when user joins a room
   const setupSocketListeners = useCallback(() => {
@@ -234,11 +238,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const socket = getSocket()
 
+    // Handle reconnection - re-join the room automatically
+    socket.on('connect', () => {
+      console.log('[Socket] Connected/Reconnected')
+      if (currentRoomIdRef.current) {
+        console.log('[Socket] Re-joining room', currentRoomIdRef.current)
+        socket.emit('room:join', { roomId: currentRoomIdRef.current })
+      }
+    })
+
     socket.on('player:joined', (data: SocketPlayer) => {
       setState(prev => {
         if (!prev.currentRoom) return prev
-        // Don't add if already exists
-        if (prev.currentRoom.participants.some(p => p.id === data.userId)) return prev
+        // Update if exists, add if new
+        const exists = prev.currentRoom.participants.some(p => p.id === data.userId)
+        if (exists) {
+          return {
+            ...prev,
+            currentRoom: {
+              ...prev.currentRoom,
+              participants: prev.currentRoom.participants.map(p =>
+                p.id === data.userId ? socketPlayerToParticipant(data) : p
+              ),
+            },
+          }
+        }
         return {
           ...prev,
           currentRoom: {
@@ -312,19 +336,24 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
 
     socket.on('chat:message', (data: SocketChatMessage) => {
-      setState(prev => ({
-        ...prev,
-        chatMessages: [...prev.chatMessages, {
-          id: data.id,
-          senderId: data.userId,
-          senderName: data.displayName || data.username,
-          content: data.message,
-          timestamp: new Date(data.createdAt),
-          type: (data.messageType as 'text' | 'emote') || 'text',
-        }],
-      }))
+      setState(prev => {
+        // Prevent duplicate messages
+        if (prev.chatMessages.some(m => m.id === data.id)) return prev
+        return {
+          ...prev,
+          chatMessages: [...prev.chatMessages, {
+            id: data.id,
+            senderId: data.userId,
+            senderName: data.displayName || data.username,
+            content: data.message,
+            timestamp: new Date(data.createdAt),
+            type: (data.messageType as 'text' | 'emote') || 'text',
+          }],
+        }
+      })
     })
 
+    // room:state is the authoritative state from server - always trust it
     socket.on('room:state', ({ participants }) => {
       setState(prev => {
         if (!prev.currentRoom) return prev
@@ -356,7 +385,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const cleanupSocketListeners = useCallback(() => {
     socketSetupRef.current = false
+    currentRoomIdRef.current = null
     const socket = getSocket()
+    socket.off('connect')
     socket.off('player:joined')
     socket.off('player:left')
     socket.off('player:moved')
@@ -384,7 +415,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setState(prev => ({ ...prev, user, isLoading: false }))
 
         // Connect socket
-        connectSocket(user.id, user.username, user.displayName)
+        await connectSocket(user.id, user.username, user.displayName)
         return true
       }
     } catch {
@@ -499,6 +530,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         createdAt: new Date(apiRoom.createdAt),
       }
 
+      // Setup listeners BEFORE setting state so events are captured
+      setupSocketListeners()
+      currentRoomIdRef.current = room.id
+
       setState(prev => ({
         ...prev,
         currentRoom: room,
@@ -512,10 +547,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }],
       }))
 
-      // Join socket room
-      setupSocketListeners()
-      const socket = getSocket()
-      socket.emit('room:join', { roomId: room.id })
+      // Use emitWhenReady to handle socket not yet connected
+      emitWhenReady('room:join', { roomId: room.id })
 
       return room
     } catch (err) {
@@ -590,10 +623,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ],
       }))
 
-      // Join socket room
+      // Setup listeners BEFORE setting state, then join socket room
       setupSocketListeners()
-      const socket = getSocket()
-      socket.emit('room:join', { roomId: room.id })
+      currentRoomIdRef.current = room.id
+      emitWhenReady('room:join', { roomId: room.id })
 
       return room
     } catch (err) {
@@ -620,13 +653,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const sendMessage = useCallback((content: string, type: 'text' | 'emote' = 'text') => {
     if (!state.user || !state.currentRoom || !content.trim()) return
 
-    const socket = getSocket()
-    socket.emit('chat:send', {
+    emitWhenReady('chat:send', {
       roomId: state.currentRoom.id,
       message: content.trim(),
       messageType: type,
     })
-    // Message will come back via socket broadcast
   }, [state.user, state.currentRoom])
 
   const moveCharacter = useCallback((x: number, y: number, direction: string, isWalking: boolean) => {
@@ -645,11 +676,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    // Broadcast via socket
-    const socket = getSocket()
-    if (socket.connected) {
-      socket.emit('player:move', { x, y, direction, isWalking })
-    }
+    // Broadcast via socket (only if connected, don't queue movement)
+    try {
+      const socket = getSocket()
+      if (socket.connected) {
+        socket.emit('player:move', { x, y, direction, isWalking })
+      }
+    } catch { /* ignore */ }
   }, [])
 
   const stopCharacter = useCallback(() => {
@@ -666,10 +699,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    const socket = getSocket()
-    if (socket.connected) {
-      socket.emit('player:stop')
-    }
+    try {
+      const socket = getSocket()
+      if (socket.connected) {
+        socket.emit('player:stop')
+      }
+    } catch { /* ignore */ }
   }, [])
 
   const updateAudioSettings = useCallback((settings: Partial<GameState['audioSettings']>) => {
@@ -729,6 +764,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
           code: r.code,
           name: r.name,
           ownerName: r.ownerName,
+          playerCount: r.playerCount,
+          maxPlayers: r.maxPlayers,
+        })),
+      }))
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const fetchMyRooms = useCallback(async () => {
+    try {
+      const { rooms } = await apiMyRooms()
+      setState(prev => ({
+        ...prev,
+        myRooms: rooms.map(r => ({
+          id: r.id,
+          code: r.code,
+          name: r.name,
+          ownerName: 'Você',
           playerCount: r.playerCount,
           maxPlayers: r.maxPlayers,
         })),
@@ -804,6 +858,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         addFurniture,
         removeFurniture,
         fetchPublicRooms,
+        fetchMyRooms,
         setSpeaking,
         setActivity,
       }}

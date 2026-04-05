@@ -22,8 +22,8 @@ export function LobbyScreen({
   onEnterRoom,
   onLogout,
 }: LobbyScreenProps) {
-  const { state, joinRoom, fetchPublicRooms, setActivity } = useGame()
-  const { user, publicRooms } = state
+  const { state, joinRoom, fetchPublicRooms, fetchMyRooms, setActivity } = useGame()
+  const { user, publicRooms, myRooms } = state
   const [quickJoinCode, setQuickJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [joinError, setJoinError] = useState('')
@@ -31,9 +31,10 @@ export function LobbyScreen({
   // Fetch public rooms on mount
   useEffect(() => {
     fetchPublicRooms()
-    const interval = setInterval(fetchPublicRooms, 10000)
+    fetchMyRooms()
+    const interval = setInterval(() => { fetchPublicRooms(); fetchMyRooms() }, 10000)
     return () => clearInterval(interval)
-  }, [fetchPublicRooms])
+  }, [fetchPublicRooms, fetchMyRooms])
 
   const handleQuickJoin = async () => {
     if (!quickJoinCode.trim()) return
@@ -147,6 +148,35 @@ export function LobbyScreen({
                 <p className="text-sm text-destructive mt-2">{joinError}</p>
               )}
             </section>
+
+            {/* My Rooms */}
+            {myRooms.length > 0 && (
+              <section className="pixel-panel p-6">
+                <h3 className="font-mono text-lg text-foreground mb-4">Minhas Salas</h3>
+                <div className="space-y-3">
+                  {myRooms.map(room => (
+                    <div
+                      key={room.id}
+                      className="flex items-center justify-between p-4 bg-primary/10 border-2 border-primary/30 hover:border-primary transition-colors cursor-pointer"
+                      onClick={() => handleJoinRoom(room.code)}
+                    >
+                      <div>
+                        <h4 className="font-mono text-foreground">{room.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Código: {room.code} | {room.playerCount} online
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-primary bg-primary/20 px-2 py-1">Dono</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Public Rooms */}
             <section className="pixel-panel p-6">
