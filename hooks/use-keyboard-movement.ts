@@ -82,9 +82,9 @@ export function useKeyboardMovement({
           direction = dy > 0 ? 'down' : 'up'
         }
 
-        // Throttle broadcasts to ~20fps
+        // Throttle broadcasts to ~30fps for smoother movement
         const now = Date.now()
-        if (now - lastBroadcast.current > 50) {
+        if (now - lastBroadcast.current > 33) {
           lastBroadcast.current = now
           onMove(newX, newY, direction, true)
         }
