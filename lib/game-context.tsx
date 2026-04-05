@@ -13,10 +13,12 @@ export interface CharacterCustomization {
   skinTone: string
   hairStyle: string
   hairColor: string
+  eyeColor?: string
   shirtStyle: string
   shirtColor: string
   pantsStyle: string
   pantsColor: string
+  shoeStyle?: string
   hatStyle: string | null
   accessory: string | null
 }

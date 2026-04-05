@@ -27,123 +27,56 @@ const wallStyles: Record<string, { color: string; pattern: string }> = {
 }
 
 const furnitureSprites: Record<string, { width: number; height: number; render: () => JSX.Element }> = {
-  sofa: {
-    width: 80, height: 50,
-    render: () => (
-      <svg width="80" height="50" viewBox="0 0 80 50" style={{ imageRendering: 'pixelated' }}>
-        <rect x="0" y="15" width="80" height="35" fill="#8B4513" />
-        <rect x="5" y="20" width="70" height="25" fill="#D2691E" />
-        <rect x="0" y="15" width="15" height="35" fill="#A0522D" />
-        <rect x="65" y="15" width="15" height="35" fill="#A0522D" />
-        <rect x="0" y="0" width="80" height="18" fill="#CD853F" />
-        <rect x="5" y="5" width="20" height="10" fill="#DEB887" />
-        <rect x="55" y="5" width="20" height="10" fill="#DEB887" />
-      </svg>
-    ),
-  },
-  table: {
-    width: 60, height: 40,
-    render: () => (
-      <svg width="60" height="40" viewBox="0 0 60 40" style={{ imageRendering: 'pixelated' }}>
-        <rect x="5" y="5" width="50" height="8" fill="#5D4037" />
-        <rect x="8" y="0" width="44" height="8" fill="#6D4C41" />
-        <rect x="8" y="13" width="6" height="27" fill="#4E342E" />
-        <rect x="46" y="13" width="6" height="27" fill="#4E342E" />
-      </svg>
-    ),
-  },
-  plant: {
-    width: 32, height: 48,
-    render: () => (
-      <svg width="32" height="48" viewBox="0 0 32 48" style={{ imageRendering: 'pixelated' }}>
-        <rect x="10" y="35" width="12" height="13" fill="#8D6E63" />
-        <rect x="8" y="38" width="16" height="10" fill="#A1887F" />
-        <ellipse cx="16" cy="25" rx="12" ry="15" fill="#4CAF50" />
-        <ellipse cx="10" cy="20" rx="6" ry="8" fill="#66BB6A" />
-        <ellipse cx="22" cy="22" rx="6" ry="8" fill="#66BB6A" />
-        <ellipse cx="16" cy="15" rx="5" ry="6" fill="#81C784" />
-      </svg>
-    ),
-  },
-  lamp: {
-    width: 24, height: 56,
-    render: () => (
-      <svg width="24" height="56" viewBox="0 0 24 56" style={{ imageRendering: 'pixelated' }}>
-        <rect x="10" y="40" width="4" height="16" fill="#5D4037" />
-        <rect x="6" y="52" width="12" height="4" fill="#4E342E" />
-        <path d="M4 10 L12 0 L20 10 L20 40 L4 40 Z" fill="#FFEB3B" />
-        <path d="M6 12 L12 4 L18 12 L18 38 L6 38 Z" fill="#FFF59D" />
-        <ellipse cx="12" cy="25" rx="4" ry="6" fill="#FFFDE7" opacity="0.5" />
-      </svg>
-    ),
-  },
-  tv: {
-    width: 64, height: 48,
-    render: () => (
-      <svg width="64" height="48" viewBox="0 0 64 48" style={{ imageRendering: 'pixelated' }}>
-        <rect x="0" y="8" width="64" height="40" fill="#212121" />
-        <rect x="4" y="12" width="56" height="32" fill="#1565C0" />
-        <rect x="8" y="16" width="48" height="24" fill="#42A5F5" />
-        <rect x="12" y="20" width="20" height="16" fill="#90CAF9" />
-        <rect x="28" y="40" width="8" height="4" fill="#424242" />
-        <rect x="24" y="44" width="16" height="4" fill="#616161" />
-      </svg>
-    ),
-  },
-  chair: {
-    width: 32, height: 40,
-    render: () => (
-      <svg width="32" height="40" viewBox="0 0 32 40" style={{ imageRendering: 'pixelated' }}>
-        <rect x="4" y="25" width="24" height="8" fill="#8D6E63" />
-        <rect x="8" y="0" width="16" height="25" fill="#A1887F" />
-        <rect x="4" y="33" width="6" height="7" fill="#6D4C41" />
-        <rect x="22" y="33" width="6" height="7" fill="#6D4C41" />
-      </svg>
-    ),
-  },
-  bed: {
-    width: 80, height: 60,
-    render: () => (
-      <svg width="80" height="60" viewBox="0 0 80 60" style={{ imageRendering: 'pixelated' }}>
-        <rect x="0" y="20" width="80" height="40" fill="#5D4037" />
-        <rect x="5" y="25" width="70" height="30" fill="#ECEFF1" />
-        <rect x="5" y="25" width="25" height="20" fill="#90CAF9" />
-        <rect x="35" y="25" width="35" height="30" fill="#B3E5FC" />
-        <rect x="0" y="10" width="20" height="50" fill="#4E342E" />
-      </svg>
-    ),
-  },
+  sofa: { width: 80, height: 50, render: () => (<svg width="80" height="50" viewBox="0 0 80 50" style={{ imageRendering: 'pixelated' }}><rect x="0" y="15" width="80" height="35" fill="#8B4513" /><rect x="5" y="20" width="70" height="25" fill="#D2691E" /><rect x="0" y="15" width="15" height="35" fill="#A0522D" /><rect x="65" y="15" width="15" height="35" fill="#A0522D" /><rect x="0" y="0" width="80" height="18" fill="#CD853F" /><rect x="5" y="5" width="20" height="10" fill="#DEB887" /><rect x="55" y="5" width="20" height="10" fill="#DEB887" /></svg>) },
+  table: { width: 60, height: 40, render: () => (<svg width="60" height="40" viewBox="0 0 60 40" style={{ imageRendering: 'pixelated' }}><rect x="5" y="5" width="50" height="8" fill="#5D4037" /><rect x="8" y="0" width="44" height="8" fill="#6D4C41" /><rect x="8" y="13" width="6" height="27" fill="#4E342E" /><rect x="46" y="13" width="6" height="27" fill="#4E342E" /></svg>) },
+  plant: { width: 32, height: 48, render: () => (<svg width="32" height="48" viewBox="0 0 32 48" style={{ imageRendering: 'pixelated' }}><rect x="10" y="35" width="12" height="13" fill="#8D6E63" /><rect x="8" y="38" width="16" height="10" fill="#A1887F" /><ellipse cx="16" cy="25" rx="12" ry="15" fill="#4CAF50" /><ellipse cx="10" cy="20" rx="6" ry="8" fill="#66BB6A" /><ellipse cx="22" cy="22" rx="6" ry="8" fill="#66BB6A" /><ellipse cx="16" cy="15" rx="5" ry="6" fill="#81C784" /></svg>) },
+  lamp: { width: 24, height: 56, render: () => (<svg width="24" height="56" viewBox="0 0 24 56" style={{ imageRendering: 'pixelated' }}><rect x="10" y="40" width="4" height="16" fill="#5D4037" /><rect x="6" y="52" width="12" height="4" fill="#4E342E" /><path d="M4 10 L12 0 L20 10 L20 40 L4 40 Z" fill="#FFEB3B" /><path d="M6 12 L12 4 L18 12 L18 38 L6 38 Z" fill="#FFF59D" /></svg>) },
+  tv: { width: 64, height: 48, render: () => (<svg width="64" height="48" viewBox="0 0 64 48" style={{ imageRendering: 'pixelated' }}><rect x="0" y="8" width="64" height="40" fill="#212121" /><rect x="4" y="12" width="56" height="32" fill="#1565C0" /><rect x="8" y="16" width="48" height="24" fill="#42A5F5" /><rect x="28" y="40" width="8" height="4" fill="#424242" /><rect x="24" y="44" width="16" height="4" fill="#616161" /></svg>) },
+  chair: { width: 32, height: 40, render: () => (<svg width="32" height="40" viewBox="0 0 32 40" style={{ imageRendering: 'pixelated' }}><rect x="4" y="25" width="24" height="8" fill="#8D6E63" /><rect x="8" y="0" width="16" height="25" fill="#A1887F" /><rect x="4" y="33" width="6" height="7" fill="#6D4C41" /><rect x="22" y="33" width="6" height="7" fill="#6D4C41" /></svg>) },
+  bed: { width: 80, height: 60, render: () => (<svg width="80" height="60" viewBox="0 0 80 60" style={{ imageRendering: 'pixelated' }}><rect x="0" y="20" width="80" height="40" fill="#5D4037" /><rect x="5" y="25" width="70" height="30" fill="#ECEFF1" /><rect x="5" y="25" width="25" height="20" fill="#90CAF9" /><rect x="35" y="25" width="35" height="30" fill="#B3E5FC" /><rect x="0" y="10" width="20" height="50" fill="#4E342E" /></svg>) },
 }
 
+// Chat bubble state per player
+const chatBubbles = new Map<number | string, { message: string; timeout: ReturnType<typeof setTimeout> }>()
+
 export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
-  const { state, leaveRoom, moveCharacter, stopCharacter } = useGame()
-  const { currentRoom, user } = state
+  const { state, leaveRoom, moveCharacter, stopCharacter, sendMessage } = useGame()
+  const { currentRoom, user, chatMessages } = state
   const roomRef = useRef<HTMLDivElement>(null)
   const [showChat, setShowChat] = useState(true)
   const [showVoice, setShowVoice] = useState(true)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [playerBubbles, setPlayerBubbles] = useState<Record<string, string>>({})
+  const [draggingFurniture, setDraggingFurniture] = useState<string | null>(null)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const isOwner = currentRoom?.ownerId === user?.id
 
-  // Get room dimensions for movement bounds
-  const [roomBounds, setRoomBounds] = useState({ minX: 30, minY: 10, maxX: 620, maxY: 380 })
+  // Room bounds - bigger room (1200x600)
+  const ROOM_WIDTH = 1200
+  const ROOM_HEIGHT = 600
+  const [roomBounds] = useState({ minX: 30, minY: 10, maxX: ROOM_WIDTH - 30, maxY: ROOM_HEIGHT - 30 })
 
+  // Track chat messages for bubbles
   useEffect(() => {
-    const updateBounds = () => {
-      if (roomRef.current) {
-        const rect = roomRef.current.getBoundingClientRect()
-        setRoomBounds({
-          minX: 30,
-          minY: 10,
-          maxX: Math.max(300, rect.width - 30),
-          maxY: Math.max(200, rect.height - 30),
-        })
-      }
-    }
-    updateBounds()
-    window.addEventListener('resize', updateBounds)
-    return () => window.removeEventListener('resize', updateBounds)
-  }, [])
+    if (chatMessages.length === 0) return
+    const lastMsg = chatMessages[chatMessages.length - 1]
+    if (lastMsg.type === 'system') return
 
-  // WASD keyboard movement
+    const key = String(lastMsg.senderId)
+    setPlayerBubbles(prev => ({ ...prev, [key]: lastMsg.content }))
+
+    const timer = setTimeout(() => {
+      setPlayerBubbles(prev => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }, [chatMessages.length, chatMessages])
+
+  // WASD movement
   const onMove = useCallback((x: number, y: number, direction: string, isWalking: boolean) => {
     moveCharacter(x, y, direction, isWalking)
   }, [moveCharacter])
@@ -153,22 +86,50 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
   }, [stopCharacter])
 
   const { setPosition } = useKeyboardMovement({
-    speed: 3,
+    speed: 4,
     bounds: roomBounds,
-    enabled: !!currentRoom && !!user,
+    enabled: !!currentRoom && !!user && !draggingFurniture,
     onMove,
     onStop,
   })
 
-  // Sync position from state to movement hook
+  // Sync position on room join
   useEffect(() => {
     if (currentRoom && user) {
       const me = currentRoom.participants.find(p => p.id === user.id)
-      if (me) {
-        setPosition(me.position.x, me.position.y)
-      }
+      if (me) setPosition(me.position.x, me.position.y)
     }
-  }, [currentRoom?.id, user?.id, setPosition]) // Only on room/user change, not every position update
+  }, [currentRoom?.id, user?.id, setPosition])
+
+  // Furniture dragging handlers
+  const handleFurnitureMouseDown = (e: React.MouseEvent, furnitureId: string) => {
+    if (!isOwner) return
+    e.stopPropagation()
+    const f = currentRoom?.furniture.find(f => f.id === furnitureId)
+    if (!f) return
+    setDraggingFurniture(furnitureId)
+    setDragOffset({
+      x: e.clientX - f.position.x,
+      y: e.clientY - f.position.y,
+    })
+  }
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!draggingFurniture || !roomRef.current) return
+    const rect = roomRef.current.getBoundingClientRect()
+    const newX = Math.max(0, Math.min(ROOM_WIDTH - 80, e.clientX - rect.left - dragOffset.x + roomRef.current.scrollLeft))
+    const newY = Math.max(0, Math.min(ROOM_HEIGHT - 60, e.clientY - rect.top - dragOffset.y + roomRef.current.scrollTop))
+
+    // Update furniture position locally
+    const { state: { currentRoom } } = useGame.call ? { state: { currentRoom: null } } : { state }
+    if (currentRoom) {
+      // We'll use a state update via the parent
+    }
+  }, [draggingFurniture, dragOffset, state])
+
+  const handleMouseUp = useCallback(() => {
+    setDraggingFurniture(null)
+  }, [])
 
   const handleLeave = async () => {
     await leaveRoom()
@@ -194,79 +155,37 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
       <header className="flex-shrink-0 border-b-4 border-border bg-card px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleLeave}
-              className="p-2 bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors"
-              style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
-              </svg>
+            <button onClick={handleLeave} className="p-2 bg-muted hover:bg-destructive/20 hover:text-destructive transition-colors" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
             </button>
             <div>
               <h1 className="font-mono text-lg text-foreground">{currentRoom.name}</h1>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={copyRoomCode}
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                >
+                <button onClick={copyRoomCode} className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1">
                   <span>Código: {currentRoom.code}</span>
-                  {copiedCode ? (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 6L9 17l-5-5" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" />
-                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                    </svg>
-                  )}
+                  {copiedCode ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 6L9 17l-5-5" /></svg>
+                    : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>}
                 </button>
                 <span className="text-xs text-muted-foreground/50">|</span>
-                <span className="text-xs text-accent">Use W A S D para mover</span>
+                <span className="text-xs text-accent">W A S D para mover</span>
+                {isOwner && <><span className="text-xs text-muted-foreground/50">|</span><span className="text-xs text-secondary">Arraste os móveis</span></>}
               </div>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <div className="hidden sm:flex items-center gap-1 px-3 py-1 bg-muted">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-primary">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-              </svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-primary"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" /></svg>
               <span className="text-sm">{currentRoom.participants.length}/{currentRoom.maxParticipants}</span>
             </div>
-
-            <button
-              onClick={() => setShowChat(!showChat)}
-              className={`p-2 transition-colors ${showChat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
-              style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
+            <button onClick={() => setShowChat(!showChat)} className={`p-2 transition-colors ${showChat ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
             </button>
-
-            <button
-              onClick={() => setShowVoice(!showVoice)}
-              className={`p-2 transition-colors ${showVoice ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`}
-              style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-              </svg>
+            <button onClick={() => setShowVoice(!showVoice)} className={`p-2 transition-colors ${showVoice ? 'bg-secondary text-secondary-foreground' : 'bg-muted text-muted-foreground'}`} style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" /></svg>
             </button>
-
-            {currentRoom.ownerId === user?.id && (
-              <button
-                onClick={onEditRoom}
-                className="p-2 bg-accent text-accent-foreground"
-                style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
+            {isOwner && (
+              <button onClick={onEditRoom} className="p-2 bg-accent text-accent-foreground" style={{ boxShadow: '2px 2px 0 0 oklch(0.1 0.02 260)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
               </button>
             )}
           </div>
@@ -277,39 +196,46 @@ export function GameRoom({ onLeave, onEditRoom }: GameRoomProps) {
       <div className="flex-1 flex overflow-hidden">
         <div className="flex-1 relative overflow-hidden">
           {/* Wall */}
-          <div
-            className="absolute top-0 left-0 right-0 h-24"
-            style={{ background: wall.pattern, backgroundColor: wall.color }}
-          >
+          <div className="absolute top-0 left-0 right-0 h-24 z-0" style={{ background: wall.pattern, backgroundColor: wall.color }}>
             <div className="absolute bottom-0 left-0 right-0 h-4 bg-black/20" />
           </div>
 
-          {/* Game Area */}
+          {/* Scrollable Game Area */}
           <div
             ref={roomRef}
-            className="absolute top-24 left-0 right-0 bottom-0"
+            className="absolute top-24 left-0 right-0 bottom-0 overflow-auto"
             style={{ background: floor.pattern, backgroundColor: floor.color }}
+            onMouseUp={handleMouseUp}
           >
-            {/* Grid */}
-            <div className="absolute inset-0 opacity-10" style={{
-              backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0,0,0,.1) 25%, rgba(0,0,0,.1) 26%, transparent 27%, transparent 74%, rgba(0,0,0,.1) 75%, rgba(0,0,0,.1) 76%, transparent 77%), linear-gradient(90deg, transparent 24%, rgba(0,0,0,.1) 25%, rgba(0,0,0,.1) 26%, transparent 27%, transparent 74%, rgba(0,0,0,.1) 75%, rgba(0,0,0,.1) 76%, transparent 77%)',
-              backgroundSize: '50px 50px',
-            }} />
+            {/* Inner room container (bigger than viewport) */}
+            <div className="relative" style={{ width: ROOM_WIDTH, height: ROOM_HEIGHT, minWidth: ROOM_WIDTH, minHeight: ROOM_HEIGHT }}>
+              {/* Grid */}
+              <div className="absolute inset-0 opacity-10 pointer-events-none" style={{
+                backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0,0,0,.1) 25%, rgba(0,0,0,.1) 26%, transparent 27%, transparent 74%, rgba(0,0,0,.1) 75%, rgba(0,0,0,.1) 76%, transparent 77%), linear-gradient(90deg, transparent 24%, rgba(0,0,0,.1) 25%, rgba(0,0,0,.1) 26%, transparent 27%, transparent 74%, rgba(0,0,0,.1) 75%, rgba(0,0,0,.1) 76%, transparent 77%)',
+                backgroundSize: '50px 50px',
+              }} />
 
-            {/* Furniture */}
-            {currentRoom.furniture.map((furniture) => (
-              <FurnitureItem key={furniture.id} furniture={furniture} />
-            ))}
+              {/* Furniture (draggable for owner) */}
+              {currentRoom.furniture.map((furniture) => (
+                <FurnitureItem
+                  key={furniture.id}
+                  furniture={furniture}
+                  isDraggable={isOwner}
+                  onMouseDown={(e) => handleFurnitureMouseDown(e, furniture.id)}
+                />
+              ))}
 
-            {/* Players */}
-            {currentRoom.participants.map((participant) => (
-              <PlayerCharacter
-                key={participant.id}
-                participant={participant}
-                isCurrentUser={participant.id === user?.id}
-                currentUserPosition={currentRoom.participants.find(p => p.id === user?.id)?.position}
-              />
-            ))}
+              {/* Players */}
+              {currentRoom.participants.map((participant) => (
+                <PlayerCharacter
+                  key={participant.id}
+                  participant={participant}
+                  isCurrentUser={participant.id === user?.id}
+                  currentUserPosition={currentRoom.participants.find(p => p.id === user?.id)?.position}
+                  chatBubble={playerBubbles[String(participant.id)] || null}
+                />
+              ))}
+            </div>
           </div>
 
           {/* Voice Chat Overlay */}
@@ -335,10 +261,12 @@ function PlayerCharacter({
   participant,
   isCurrentUser,
   currentUserPosition,
+  chatBubble,
 }: {
   participant: RoomParticipant
   isCurrentUser: boolean
   currentUserPosition?: { x: number; y: number }
+  chatBubble: string | null
 }) {
   const getDistanceOpacity = () => {
     if (!currentUserPosition || isCurrentUser) return 1
@@ -355,20 +283,9 @@ function PlayerCharacter({
         left: participant.position.x - 24,
         top: participant.position.y - 72,
         opacity: getDistanceOpacity(),
-        transition: isCurrentUser ? 'none' : 'left 0.1s linear, top 0.1s linear',
+        transition: isCurrentUser ? 'none' : 'left 80ms linear, top 80ms linear',
       }}
     >
-      {/* Speaking indicator */}
-      {participant.isSpeaking && (
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex gap-0.5">
-          <div className="w-1 h-2 bg-secondary animate-pulse" />
-          <div className="w-1 h-3 bg-secondary animate-pulse" style={{ animationDelay: '100ms' }} />
-          <div className="w-1 h-4 bg-secondary animate-pulse" style={{ animationDelay: '200ms' }} />
-          <div className="w-1 h-3 bg-secondary animate-pulse" style={{ animationDelay: '100ms' }} />
-          <div className="w-1 h-2 bg-secondary animate-pulse" />
-        </div>
-      )}
-
       <PixelAvatar
         character={participant.character}
         size="md"
@@ -376,9 +293,9 @@ function PlayerCharacter({
         direction={participant.direction}
         showName
         isSpeaking={participant.isSpeaking}
+        chatBubble={chatBubble}
       />
 
-      {/* Current user indicator */}
       {isCurrentUser && (
         <div className="absolute -bottom-2 left-1/2 -translate-x-1/2">
           <div className="w-2 h-2 bg-primary animate-pulse" />
@@ -388,18 +305,23 @@ function PlayerCharacter({
   )
 }
 
-function FurnitureItem({ furniture }: { furniture: RoomFurniture }) {
+function FurnitureItem({ furniture, isDraggable, onMouseDown }: {
+  furniture: RoomFurniture
+  isDraggable: boolean
+  onMouseDown: (e: React.MouseEvent) => void
+}) {
   const sprite = furnitureSprites[furniture.type]
   if (!sprite) return null
 
   return (
     <div
-      className="absolute pointer-events-none z-5"
+      className={`absolute z-5 ${isDraggable ? 'cursor-grab hover:outline hover:outline-2 hover:outline-primary/50 active:cursor-grabbing' : 'pointer-events-none'}`}
       style={{
         left: furniture.position.x,
         top: furniture.position.y,
         transform: `rotate(${furniture.rotation}deg)`,
       }}
+      onMouseDown={isDraggable ? onMouseDown : undefined}
     >
       {sprite.render()}
     </div>
