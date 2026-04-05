@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useGame } from '@/lib/game-context'
 import { PixelAvatar } from '@/components/game/pixel-avatar'
+import { ActivityStatusPicker } from '@/components/game/activity-status'
 
 interface LobbyScreenProps {
   onCreateRoom: () => void
@@ -21,7 +22,7 @@ export function LobbyScreen({
   onEnterRoom,
   onLogout,
 }: LobbyScreenProps) {
-  const { state, joinRoom, fetchPublicRooms } = useGame()
+  const { state, joinRoom, fetchPublicRooms, setActivity } = useGame()
   const { user, publicRooms } = state
   const [quickJoinCode, setQuickJoinCode] = useState('')
   const [isJoining, setIsJoining] = useState(false)
@@ -211,6 +212,19 @@ export function LobbyScreen({
                   Editar Personagem
                 </button>
               </div>
+            </section>
+
+            {/* Activity Status */}
+            <section className="pixel-panel p-6">
+              <h3 className="font-mono text-lg text-foreground mb-4">Meu Status</h3>
+              <ActivityStatusPicker
+                currentActivity={user?.activity || null}
+                customStatus={user?.customStatus || null}
+                onSetActivity={(activity, custom) => setActivity(activity, custom)}
+              />
+              <p className="text-xs text-muted-foreground mt-3">
+                Mostre aos outros o que você está fazendo!
+              </p>
             </section>
 
             {/* Info */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useGame } from '@/lib/game-context'
 
 interface JoinRoomScreenProps {
@@ -9,10 +9,16 @@ interface JoinRoomScreenProps {
 }
 
 export function JoinRoomScreen({ onBack, onSuccess }: JoinRoomScreenProps) {
-  const { joinRoom } = useGame()
+  const { joinRoom, fetchPublicRooms, state } = useGame()
+  const { publicRooms } = state
   const [code, setCode] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Load real public rooms
+  useEffect(() => {
+    fetchPublicRooms()
+  }, [fetchPublicRooms])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,23 +41,29 @@ export function JoinRoomScreen({ onBack, onSuccess }: JoinRoomScreenProps) {
     }
   }
 
-  // Salas recentes mockadas
-  const recentRooms = [
-    { code: 'ABC123', name: 'Sala do Pedro', lastVisit: 'Há 2 horas' },
-    { code: 'XYZ789', name: 'Festa de Sexta', lastVisit: 'Ontem' },
-  ]
+  const handleJoinPublicRoom = async (roomCode: string) => {
+    setError('')
+    setIsLoading(true)
+    try {
+      const room = await joinRoom(roomCode)
+      if (room) {
+        onSuccess()
+      } else {
+        setError('Erro ao entrar na sala.')
+      }
+    } catch {
+      setError('Erro ao entrar na sala.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative">
-      {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-card to-background" />
 
       <div className="relative z-10 w-full max-w-md">
-        {/* Back button */}
-        <button
-          onClick={onBack}
-          className="mb-6 text-muted-foreground hover:text-foreground flex items-center gap-2"
-        >
+        <button onClick={onBack} className="mb-6 text-muted-foreground hover:text-foreground flex items-center gap-2">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
@@ -60,24 +72,18 @@ export function JoinRoomScreen({ onBack, onSuccess }: JoinRoomScreenProps) {
 
         <div className="pixel-panel p-8">
           <div className="text-center mb-6">
-            <h1 className="game-title text-secondary text-xl mb-2">
-              Entrar em Sala
-            </h1>
-            <p className="text-muted-foreground">
-              Digite o código da sala para entrar
-            </p>
+            <h1 className="game-title text-secondary text-xl mb-2">Entrar em Sala</h1>
+            <p className="text-muted-foreground">Digite o código da sala para entrar</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="code" className="block text-sm text-muted-foreground mb-2">
-                Código da Sala
-              </label>
+              <label htmlFor="code" className="block text-sm text-muted-foreground mb-2">Código da Sala</label>
               <input
                 type="text"
                 id="code"
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => { setCode(e.target.value.toUpperCase()); setError('') }}
                 placeholder="ABC123"
                 className="pixel-input w-full text-center text-2xl font-mono tracking-widest"
                 maxLength={8}
@@ -100,24 +106,21 @@ export function JoinRoomScreen({ onBack, onSuccess }: JoinRoomScreenProps) {
             </button>
           </form>
 
-          {/* Salas Recentes */}
-          {recentRooms.length > 0 && (
+          {/* Real public rooms from DB */}
+          {publicRooms.length > 0 && (
             <div className="mt-8 pt-6 border-t-2 border-border">
-              <h3 className="text-sm text-muted-foreground mb-4">Salas Recentes</h3>
+              <h3 className="text-sm text-muted-foreground mb-4">Salas Públicas Disponíveis</h3>
               <div className="space-y-2">
-                {recentRooms.map(room => (
+                {publicRooms.map(room => (
                   <button
-                    key={room.code}
-                    onClick={async () => {
-                      setCode(room.code)
-                      const result = await joinRoom(room.code)
-                      if (result) onSuccess()
-                    }}
-                    className="w-full p-3 flex items-center justify-between bg-muted/50 border border-border hover:border-secondary transition-colors text-left"
+                    key={room.id}
+                    onClick={() => handleJoinPublicRoom(room.code)}
+                    disabled={isLoading}
+                    className="w-full p-3 flex items-center justify-between bg-muted/50 border border-border hover:border-secondary transition-colors text-left disabled:opacity-50"
                   >
                     <div>
                       <p className="font-mono text-sm">{room.name}</p>
-                      <p className="text-xs text-muted-foreground">{room.lastVisit}</p>
+                      <p className="text-xs text-muted-foreground">{room.playerCount}/{room.maxPlayers} jogadores</p>
                     </div>
                     <span className="text-xs text-secondary font-mono">{room.code}</span>
                   </button>

@@ -30,6 +30,8 @@ export interface User {
   displayName: string
   character: CharacterCustomization
   status: 'online' | 'away' | 'busy' | 'offline'
+  activity: string | null
+  customStatus: string | null
 }
 
 export interface RoomParticipant {
@@ -119,6 +121,7 @@ interface GameContextType {
   removeFurniture: (id: string) => void
   fetchPublicRooms: () => Promise<void>
   setSpeaking: (userId: number, isSpeaking: boolean) => void
+  setActivity: (activity: string | null, customStatus: string | null) => void
 }
 
 interface RegisterData {
@@ -375,6 +378,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           displayName: apiUser.displayName || apiUser.username,
           character: apiCharToUI(apiUser.character, apiUser.displayName || apiUser.username),
           status: 'online',
+          activity: null,
+          customStatus: null,
         }
         setState(prev => ({ ...prev, user, isLoading: false }))
 
@@ -748,10 +753,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  const setActivity = useCallback((activity: string | null, customStatus: string | null) => {
+    setState(prev => {
+      if (!prev.user) return prev
+      return { ...prev, user: { ...prev.user, activity, customStatus } }
+    })
+  }, [])
+
   // Auto-check session on mount
   useEffect(() => {
     checkSession()
   }, [checkSession])
+
+  // Detect tab visibility change
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        setState(prev => {
+          if (!prev.user) return prev
+          return { ...prev, user: { ...prev.user, status: 'away' } }
+        })
+      } else {
+        setState(prev => {
+          if (!prev.user) return prev
+          return { ...prev, user: { ...prev.user, status: 'online' } }
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
 
   return (
     <GameContext.Provider
@@ -774,6 +805,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         removeFurniture,
         fetchPublicRooms,
         setSpeaking,
+        setActivity,
       }}
     >
       {children}
