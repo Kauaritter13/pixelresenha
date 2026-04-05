@@ -11,6 +11,7 @@ export function VoiceChat() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [isVoiceActive, setIsVoiceActive] = useState(false)
   const [voiceError, setVoiceError] = useState('')
+  const [connectedPeers, setConnectedPeers] = useState(0)
   const voiceManagerRef = useRef<VoiceChatManager | null>(null)
 
   const speakingUsers = currentRoom?.participants.filter(p => p.isSpeaking) || []
@@ -58,6 +59,12 @@ export function VoiceChat() {
       manager.setOnSpeakingChange((userId, isSpeaking) => {
         setSpeaking(userId, isSpeaking)
       })
+      manager.setOnError((error) => {
+        setVoiceError(error)
+      })
+      manager.setOnPeerConnected(() => {
+        setConnectedPeers(manager.getConnectedPeers().length)
+      })
 
       const success = await manager.joinVoice(currentRoom.id)
       if (success) {
@@ -65,7 +72,7 @@ export function VoiceChat() {
         setIsVoiceActive(true)
         setVoiceError('')
       } else {
-        setVoiceError('Não foi possível acessar o microfone')
+        setVoiceError('Não foi possível acessar o microfone. Verifique as permissões.')
         manager.destroy()
       }
     } catch {
@@ -143,6 +150,15 @@ export function VoiceChat() {
           {voiceError && (
             <div className="p-2 bg-destructive/20 border border-destructive text-xs text-destructive">
               {voiceError}
+            </div>
+          )}
+
+          {isVoiceActive && (
+            <div className="p-2 bg-muted/50 border border-border text-xs text-muted-foreground">
+              {connectedPeers > 0
+                ? <span className="text-primary">Conectado com {connectedPeers} pessoa(s)</span>
+                : <span>Aguardando outros jogadores entrarem no voice...</span>
+              }
             </div>
           )}
 
