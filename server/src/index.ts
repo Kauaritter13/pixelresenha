@@ -15,11 +15,13 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000'
 
 const io = new Server(httpServer, {
   cors: {
-    origin: [FRONTEND_URL, 'http://localhost:3000'],
+    origin: [FRONTEND_URL, 'http://localhost:3000', /\.vercel\.app$/],
     methods: ['GET', 'POST'],
     credentials: true,
   },
   transports: ['websocket', 'polling'],
+  pingInterval: 10000,
+  pingTimeout: 5000,
 })
 
 app.use(cors({ origin: [FRONTEND_URL, 'http://localhost:3000'], credentials: true }))
@@ -27,12 +29,10 @@ app.use(express.json())
 
 const sql = neon(process.env.DATABASE_URL!)
 
-// Health check
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ status: 'ok', connections: connectedUsers.size, timestamp: new Date().toISOString() })
 })
 
-// Track connected users: socketId -> { userId, roomId, username, displayName, character, x, y, direction, isWalking }
 interface ConnectedUser {
   userId: number
   roomId: number | null
@@ -48,7 +48,6 @@ interface ConnectedUser {
 
 const connectedUsers = new Map<string, ConnectedUser>()
 
-// Helper: get all users in a room
 function getRoomUsers(roomId: number) {
   const users: Array<ConnectedUser & { socketId: string }> = []
   connectedUsers.forEach((user, socketId) => {
@@ -59,6 +58,13 @@ function getRoomUsers(roomId: number) {
   return users
 }
 
+function findSocketByUserId(userId: number): string | null {
+  for (const [sid, u] of connectedUsers) {
+    if (u.userId === userId) return sid
+  }
+  return null
+}
+
 io.on('connection', (socket) => {
   const { userId, username, displayName } = socket.handshake.auth as {
     userId: number
@@ -66,7 +72,22 @@ io.on('connection', (socket) => {
     displayName: string
   }
 
-  console.log(`User connected: ${username} (${userId}) [${socket.id}]`)
+  if (!userId) {
+    socket.disconnect()
+    return
+  }
+
+  // Disconnect previous socket for same user (prevent ghost connections)
+  const existingSocket = findSocketByUserId(userId)
+  if (existingSocket && existingSocket !== socket.id) {
+    const existingUser = connectedUsers.get(existingSocket)
+    if (existingUser?.roomId) {
+      io.to(existingSocket).emit('force:disconnect', { reason: 'new_connection' })
+    }
+    connectedUsers.delete(existingSocket)
+  }
+
+  console.log(`[CONNECT] ${username} (${userId}) [${socket.id}]`)
 
   connectedUsers.set(socket.id, {
     userId,
@@ -81,22 +102,21 @@ io.on('connection', (socket) => {
     voiceRoom: null,
   })
 
-  // Join a room
+  // Join room
   socket.on('room:join', async ({ roomId }: { roomId: number }) => {
     const user = connectedUsers.get(socket.id)
     if (!user) return
 
-    // Leave previous room if any
+    // Leave previous room
     if (user.roomId) {
       socket.leave(`room:${user.roomId}`)
-      io.to(`room:${user.roomId}`).emit('player:left', { userId: user.userId })
+      // Use socket.to() to NOT include the sender
+      socket.to(`room:${user.roomId}`).emit('player:left', { userId: user.userId })
     }
 
     // Load character from DB
     try {
-      const chars = await sql`
-        SELECT * FROM characters WHERE user_id = ${userId}
-      `
+      const chars = await sql`SELECT * FROM characters WHERE user_id = ${userId}`
       if (chars.length > 0) {
         const c = chars[0]
         user.character = {
@@ -113,7 +133,6 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Load position from DB
       const participants = await sql`
         SELECT position_x, position_y, direction FROM room_participants
         WHERE room_id = ${roomId} AND user_id = ${userId}
@@ -124,14 +143,14 @@ io.on('connection', (socket) => {
         user.direction = participants[0].direction || 'down'
       }
     } catch (err) {
-      console.error('Error loading character:', err)
+      console.error('[ERROR] Loading character:', err)
     }
 
     user.roomId = roomId
     socket.join(`room:${roomId}`)
 
-    // Notify others
-    io.to(`room:${roomId}`).emit('player:joined', {
+    // Notify OTHERS (not sender) that this player joined
+    socket.to(`room:${roomId}`).emit('player:joined', {
       userId: user.userId,
       username: user.username,
       displayName: user.displayName,
@@ -142,7 +161,7 @@ io.on('connection', (socket) => {
       character: user.character,
     })
 
-    // Send current room state to the new player
+    // Send FULL room state to the joining player (includes themselves and all others)
     const roomUsers = getRoomUsers(roomId)
     socket.emit('room:state', {
       participants: roomUsers.map(u => ({
@@ -156,6 +175,8 @@ io.on('connection', (socket) => {
         character: u.character,
       })),
     })
+
+    console.log(`[ROOM:JOIN] ${username} joined room ${roomId} (${roomUsers.length} players)`)
   })
 
   // Leave room
@@ -164,8 +185,9 @@ io.on('connection', (socket) => {
     if (!user || !user.roomId) return
 
     const roomId = user.roomId
+    console.log(`[ROOM:LEAVE] ${user.username} left room ${roomId}`)
     socket.leave(`room:${roomId}`)
-    io.to(`room:${roomId}`).emit('player:left', { userId: user.userId })
+    socket.to(`room:${roomId}`).emit('player:left', { userId: user.userId })
     user.roomId = null
   })
 
@@ -179,41 +201,36 @@ io.on('connection', (socket) => {
     user.direction = direction
     user.isWalking = isWalking
 
-    // Broadcast to others in the room
     socket.to(`room:${user.roomId}`).emit('player:moved', {
       userId: user.userId,
       x, y, direction, isWalking,
     })
   })
 
-  // Player stopped moving
+  // Player stopped
   socket.on('player:stop', () => {
     const user = connectedUsers.get(socket.id)
     if (!user || !user.roomId) return
 
     user.isWalking = false
+    socket.to(`room:${user.roomId}`).emit('player:stopped', { userId: user.userId })
 
-    socket.to(`room:${user.roomId}`).emit('player:stopped', {
-      userId: user.userId,
-    })
-
-    // Persist position to DB (throttled - only on stop)
+    // Persist position
     sql`
       UPDATE room_participants SET position_x = ${user.x}, position_y = ${user.y}, direction = ${user.direction}
       WHERE room_id = ${user.roomId} AND user_id = ${user.userId}
-    `.catch(err => console.error('Error saving position:', err))
+    `.catch(err => console.error('[ERROR] Saving position:', err))
   })
 
   // Chat message
   socket.on('chat:send', async ({ roomId, message, messageType }: { roomId: number; message: string; messageType?: string }) => {
     const user = connectedUsers.get(socket.id)
-    if (!user) return
+    if (!user || !message?.trim()) return
 
     try {
-      // Persist to DB
       const result = await sql`
         INSERT INTO chat_messages (room_id, user_id, message, message_type)
-        VALUES (${roomId}, ${user.userId}, ${message}, ${messageType || 'text'})
+        VALUES (${roomId}, ${user.userId}, ${message.trim()}, ${messageType || 'text'})
         RETURNING id, created_at
       `
 
@@ -222,15 +239,25 @@ io.on('connection', (socket) => {
         userId: user.userId,
         username: user.username,
         displayName: user.displayName,
-        message,
+        message: message.trim(),
         messageType: messageType || 'text',
         createdAt: result[0].created_at,
       }
 
-      // Broadcast to everyone in the room (including sender)
+      // Broadcast to EVERYONE in room (including sender, so sender sees their own message)
       io.to(`room:${roomId}`).emit('chat:message', msg)
     } catch (err) {
-      console.error('Error saving message:', err)
+      console.error('[ERROR] Saving message:', err)
+      // Still try to broadcast even if DB save fails
+      socket.emit('chat:message', {
+        id: Date.now(),
+        userId: user.userId,
+        username: user.username,
+        displayName: user.displayName,
+        message: message.trim(),
+        messageType: messageType || 'text',
+        createdAt: new Date().toISOString(),
+      })
     }
   })
 
@@ -238,77 +265,52 @@ io.on('connection', (socket) => {
   socket.on('voice:join', ({ roomId }: { roomId: number }) => {
     const user = connectedUsers.get(socket.id)
     if (!user) return
-
     user.voiceRoom = roomId
     socket.join(`voice:${roomId}`)
-
-    // Notify others in voice room
     socket.to(`voice:${roomId}`).emit('voice:user-joined', { userId: user.userId })
   })
 
   socket.on('voice:leave', () => {
     const user = connectedUsers.get(socket.id)
     if (!user || !user.voiceRoom) return
-
     const voiceRoom = user.voiceRoom
     socket.leave(`voice:${voiceRoom}`)
     socket.to(`voice:${voiceRoom}`).emit('voice:user-left', { userId: user.userId })
     user.voiceRoom = null
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   socket.on('voice:offer', ({ to, offer }: { to: number; offer: any }) => {
-    // Find socket of target user
-    connectedUsers.forEach((u, sid) => {
-      if (u.userId === to) {
-        const user = connectedUsers.get(socket.id)
-        io.to(sid).emit('voice:offer', { from: user?.userId || 0, offer })
-      }
-    })
+    const sid = findSocketByUserId(to)
+    if (sid) io.to(sid).emit('voice:offer', { from: userId, offer })
   })
 
   socket.on('voice:answer', ({ to, answer }: { to: number; answer: any }) => {
-    connectedUsers.forEach((u, sid) => {
-      if (u.userId === to) {
-        const user = connectedUsers.get(socket.id)
-        io.to(sid).emit('voice:answer', { from: user?.userId || 0, answer })
-      }
-    })
+    const sid = findSocketByUserId(to)
+    if (sid) io.to(sid).emit('voice:answer', { from: userId, answer })
   })
 
   socket.on('voice:ice-candidate', ({ to, candidate }: { to: number; candidate: any }) => {
-    connectedUsers.forEach((u, sid) => {
-      if (u.userId === to) {
-        const user = connectedUsers.get(socket.id)
-        io.to(sid).emit('voice:ice-candidate', { from: user?.userId || 0, candidate })
-      }
-    })
+    const sid = findSocketByUserId(to)
+    if (sid) io.to(sid).emit('voice:ice-candidate', { from: userId, candidate })
   })
 
   socket.on('voice:speaking', ({ isSpeaking }: { isSpeaking: boolean }) => {
     const user = connectedUsers.get(socket.id)
     if (!user || !user.roomId) return
-
-    io.to(`room:${user.roomId}`).emit('voice:speaking', {
-      userId: user.userId,
-      isSpeaking,
-    })
+    socket.to(`room:${user.roomId}`).emit('voice:speaking', { userId: user.userId, isSpeaking })
   })
 
   // Disconnect
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
     const user = connectedUsers.get(socket.id)
     if (user) {
-      console.log(`User disconnected: ${user.username} (${user.userId})`)
-
+      console.log(`[DISCONNECT] ${user.username} (${user.userId}) reason: ${reason}`)
       if (user.roomId) {
-        io.to(`room:${user.roomId}`).emit('player:left', { userId: user.userId })
+        socket.to(`room:${user.roomId}`).emit('player:left', { userId: user.userId })
       }
-
       if (user.voiceRoom) {
-        io.to(`voice:${user.voiceRoom}`).emit('voice:user-left', { userId: user.userId })
+        socket.to(`voice:${user.voiceRoom}`).emit('voice:user-left', { userId: user.userId })
       }
-
       connectedUsers.delete(socket.id)
     }
   })
@@ -316,5 +318,5 @@ io.on('connection', (socket) => {
 
 const PORT = parseInt(process.env.PORT || '3001', 10)
 httpServer.listen(PORT, '0.0.0.0', () => {
-  console.log(`PixelResenha WebSocket server running on port ${PORT}`)
+  console.log(`[SERVER] PixelResenha WebSocket running on port ${PORT}`)
 })

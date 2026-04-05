@@ -51,6 +51,10 @@ export async function apiListRooms() {
   return request<{ rooms: ApiRoom[] }>('/rooms')
 }
 
+export async function apiMyRooms() {
+  return request<{ rooms: ApiRoom[] }>('/rooms/mine')
+}
+
 export async function apiCreateRoom(data: {
   name: string
   maxPlayers: number

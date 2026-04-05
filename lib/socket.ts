@@ -11,20 +11,52 @@ export function getSocket(): Socket {
       autoConnect: false,
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
     })
   }
   return socket
 }
 
-export function connectSocket(userId: number, username: string, displayName: string): Socket {
-  const s = getSocket()
-  if (!s.connected) {
+export function connectSocket(userId: number, username: string, displayName: string): Promise<Socket> {
+  return new Promise((resolve) => {
+    const s = getSocket()
+
+    // If already connected, just update auth and resolve
+    if (s.connected) {
+      resolve(s)
+      return
+    }
+
     s.auth = { userId, username, displayName }
+
+    const onConnect = () => {
+      s.off('connect', onConnect)
+      console.log('[Socket] Connected:', s.id)
+      resolve(s)
+    }
+
+    s.on('connect', onConnect)
+
+    // If connection fails, still resolve so the app doesn't hang
+    const onError = () => {
+      s.off('connect_error', onError)
+      console.warn('[Socket] Connection failed, will retry')
+      resolve(s)
+    }
+    s.on('connect_error', onError)
+
     s.connect()
-  }
-  return s
+
+    // Safety timeout
+    setTimeout(() => {
+      s.off('connect', onConnect)
+      s.off('connect_error', onError)
+      resolve(s)
+    }, 5000)
+  })
 }
 
 export function disconnectSocket() {
@@ -34,34 +66,25 @@ export function disconnectSocket() {
   }
 }
 
-// Socket event types
-export interface ServerToClientEvents {
-  'player:joined': (data: SocketPlayer) => void
-  'player:left': (data: { userId: number }) => void
-  'player:moved': (data: { userId: number; x: number; y: number; direction: string; isWalking: boolean }) => void
-  'player:stopped': (data: { userId: number }) => void
-  'chat:message': (data: SocketChatMessage) => void
-  'room:state': (data: { participants: SocketPlayer[] }) => void
-  'voice:offer': (data: { from: number; offer: RTCSessionDescriptionInit }) => void
-  'voice:answer': (data: { from: number; answer: RTCSessionDescriptionInit }) => void
-  'voice:ice-candidate': (data: { from: number; candidate: RTCIceCandidateInit }) => void
-  'voice:speaking': (data: { userId: number; isSpeaking: boolean }) => void
-  'voice:user-joined': (data: { userId: number }) => void
-  'voice:user-left': (data: { userId: number }) => void
+export function isSocketConnected(): boolean {
+  return socket?.connected || false
 }
 
-export interface ClientToServerEvents {
-  'room:join': (data: { roomId: number }) => void
-  'room:leave': () => void
-  'player:move': (data: { x: number; y: number; direction: string; isWalking: boolean }) => void
-  'player:stop': () => void
-  'chat:send': (data: { roomId: number; message: string; messageType?: string }) => void
-  'voice:join': (data: { roomId: number }) => void
-  'voice:leave': () => void
-  'voice:offer': (data: { to: number; offer: RTCSessionDescriptionInit }) => void
-  'voice:answer': (data: { to: number; answer: RTCSessionDescriptionInit }) => void
-  'voice:ice-candidate': (data: { to: number; candidate: RTCIceCandidateInit }) => void
-  'voice:speaking': (data: { isSpeaking: boolean }) => void
+// Wait for socket to be connected before emitting
+export function emitWhenReady(event: string, data: unknown) {
+  const s = getSocket()
+  if (s.connected) {
+    s.emit(event, data)
+  } else {
+    // Wait for connection then emit
+    const handler = () => {
+      s.off('connect', handler)
+      s.emit(event, data)
+    }
+    s.on('connect', handler)
+    // Timeout after 5s
+    setTimeout(() => s.off('connect', handler), 5000)
+  }
 }
 
 export interface SocketPlayer {

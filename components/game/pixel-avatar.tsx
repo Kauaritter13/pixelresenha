@@ -538,19 +538,21 @@ export function PixelAvatar({
         {/* Shirt */}
         {renderShirt(character.shirtStyle, character.shirtColor, character.skinTone)}
 
+        {/* Female chest indicator */}
+        {character.gender === 'female' && (
+          <>
+            <rect x="10" y="24" width="4" height="3" fill={`${character.shirtColor}CC`} rx="1" />
+            <rect x="18" y="24" width="4" height="3" fill={`${character.shirtColor}CC`} rx="1" />
+            <rect x="10" y="25" width="4" height="1" fill={`${character.shirtColor}88`} />
+            <rect x="18" y="25" width="4" height="1" fill={`${character.shirtColor}88`} />
+          </>
+        )}
+
         {/* Hands */}
-        {character.shirtStyle !== 'tanktop' && (
-          <>
-            <rect x="6" y="30" width="4" height="4" fill={character.skinTone} />
-            <rect x="22" y="30" width="4" height="4" fill={character.skinTone} />
-          </>
-        )}
-        {character.shirtStyle === 'tanktop' && (
-          <>
-            <rect x="6" y="30" width="4" height="4" fill={character.skinTone} />
-            <rect x="22" y="30" width="4" height="4" fill={character.skinTone} />
-          </>
-        )}
+        <>
+          <rect x="6" y="30" width="4" height="4" fill={character.skinTone} />
+          <rect x="22" y="30" width="4" height="4" fill={character.skinTone} />
+        </>
 
         {/* Pants */}
         {renderPants(character.pantsStyle, character.pantsColor, character.skinTone)}
